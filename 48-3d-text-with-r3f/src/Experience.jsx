@@ -10,10 +10,12 @@ import * as THREE from "three";
 import { Perf } from "r3f-perf";
 import { useFrame } from "@react-three/fiber";
 
+// Using three as a solution to create only one geometry and material
 const torusGeometry = new THREE.TorusGeometry(1, 0.6, 16, 32);
 const material = new THREE.MeshMatcapMaterial();
 
 export default function Experience() {
+  // 100% react solution - kinda weird
   // const [torus, setTorus] = useState();
   // const [material, setMaterial] = useState();
 
@@ -34,6 +36,7 @@ export default function Experience() {
   });
 
   useEffect(() => {
+    // Necessary to get the correct colors of the material
     matcapTexture.colorSpace = THREE.SRGBColorSpace;
     matcapTexture.needsUpdate = true;
 
@@ -47,6 +50,7 @@ export default function Experience() {
 
       <OrbitControls makeDefault />
 
+      {/* React only solution */}
       {/* <torusGeometry ref={setTorus} args={[1, 0.6, 16, 32]} />
       <meshMatcapMaterial ref={setMaterial} matcap={matcapTexture} /> */}
 
