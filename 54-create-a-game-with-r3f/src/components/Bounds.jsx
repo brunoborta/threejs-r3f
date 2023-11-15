@@ -3,7 +3,7 @@ import { CuboidCollider, RigidBody } from "@react-three/rapier";
 export default function Bounds({ length = 1, geometry, material }) {
   return (
     <>
-      <RigidBody type="fixed" restitution={0.2} friction={0} colliders={false}>
+      <RigidBody type="fixed" restitution={0.2} friction={0}>
         <mesh
           geometry={geometry}
           material={material}
