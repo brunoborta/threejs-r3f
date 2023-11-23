@@ -1,7 +1,9 @@
 import { useKeyboardControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useRapier, RigidBody } from "@react-three/rapier";
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import * as THREE from "three";
+import useGame from "../stores/useGame";
 
 export default function Player() {
   const body = useRef();
@@ -9,6 +11,15 @@ export default function Player() {
   const { rapier, world } = useRapier();
   const rapierWorld = world;
 
+  const start = useGame((state) => state.start);
+  const end = useGame((state) => state.end);
+  const restart = useGame((state) => state.restart);
+  const blocksCount = useGame((state) => state.blocksCount);
+
+  const [smoothedCameraPosition] = useState(
+    () => new THREE.Vector3(10, 10, 10)
+  );
+  const [smoothedCameraTarget] = useState(() => new THREE.Vector3());
   function jump() {
     const origin = body.current.translation();
     origin.y -= 0.31;
@@ -21,7 +32,21 @@ export default function Player() {
     }
   }
 
+  function reset() {
+    body.current.setTranslation({ x: 0, y: 1, z: 0 });
+    // Linear Velocity and Angular Velocity
+    body.current.setLinvel({ x: 0, y: 0, z: 0 });
+    body.current.setAngvel({ x: 0, y: 0, z: 0 });
+  }
+
   useEffect(() => {
+    // Changing store phases
+    const unsubscribeReset = useGame.subscribe(
+      (state) => state.phase,
+      (phase) => {
+        if (phase === "ready") reset();
+      }
+    );
     const unsubscribeJump = subscribeKeys(
       (state) => {
         return state.jump;
@@ -32,10 +57,20 @@ export default function Player() {
         }
       }
     );
-    return () => unsubscribeJump();
+    const unsubscribeAnyKey = subscribeKeys(() => {
+      start();
+    });
+    return () => {
+      unsubscribeJump();
+      unsubscribeAnyKey();
+      unsubscribeReset();
+    };
   }, []);
 
   useFrame((state, delta) => {
+    /**
+     * Controls
+     */
     const { forward, backward, leftward, rightward } = getKeys();
     const impulse = { x: 0, y: 0, z: 0 };
     const torque = { x: 0, y: 0, z: 0 };
@@ -62,6 +97,37 @@ export default function Player() {
 
     body.current.applyImpulse(impulse);
     body.current.applyTorqueImpulse(torque);
+
+    /**
+     * Camera
+     */
+    const bodyPosition = body.current.translation();
+    const cameraPosition = new THREE.Vector3();
+    cameraPosition.copy(bodyPosition);
+    cameraPosition.z += 2.25;
+    cameraPosition.y += 0.65;
+
+    const cameraTarget = new THREE.Vector3();
+    cameraTarget.copy(bodyPosition);
+    cameraTarget.y += 0.25;
+
+    // Smoothering the camera position
+    smoothedCameraPosition.lerp(cameraPosition, 5 * delta);
+    smoothedCameraTarget.lerp(cameraTarget, 5 * delta);
+
+    state.camera.position.copy(smoothedCameraPosition);
+    state.camera.lookAt(smoothedCameraTarget);
+
+    /**
+     * Phases
+     */
+    if (bodyPosition.z < -(blocksCount * 4 + 2)) {
+      end();
+    }
+
+    if (bodyPosition.y < -4) {
+      restart();
+    }
   }, []);
   return (
     <RigidBody
